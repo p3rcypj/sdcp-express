@@ -1,17 +1,18 @@
-var express = require("express");
-var dgram = require("dgram");
-var router = express.Router();
+import express, { Request, Response, NextFunction } from "express";
+import dgram from "dgram";
+
+const router = express.Router();
 
 const udpStartPort = 50000;
-const networkRegex = /^([0-9]{1,3}\.){3}[0-9]{1,3}$/;
+const _networkRegex = /^([0-9]{1,3}\.){3}[0-9]{1,3}$/;
 
 /* GET users listing. */
-router.get("/", function (req, res, next) {
+router.get("/", (_req: Request, res: Response, _next: NextFunction) => {
     const message = Buffer.from("M99999");
     const socket = dgram.createSocket("udp4");
     const broadcastAddress = "192.168.1.255";
-    const port = 3000; //SDCP port
-    const responses = [];
+    const port = 3000; // SDCP port
+    const responses: { message: Buffer; address: string; port: number }[] = [];
 
     socket.bind(udpStartPort, () => {
         socket.setBroadcast(true);
@@ -24,7 +25,7 @@ router.get("/", function (req, res, next) {
         });
     });
 
-    socket.on("message", (msg, rinfo) => {
+    socket.on("message", (msg: Buffer, rinfo: dgram.RemoteInfo) => {
         const response = {
             message: msg,
             address: rinfo.address,
@@ -33,11 +34,11 @@ router.get("/", function (req, res, next) {
 
         console.log(`Received response:`, response);
 
-        if (!responses.some(r => r.address === rinfo.address && r.message === msg.toString()))
-            responses.push(msg);
+        if (!responses.some(r => r.address === rinfo.address && r.message.equals(msg)))
+            responses.push(response);
     });
 
-    socket.on("error", err => {
+    socket.on("error", (err: Error) => {
         console.error(`Socket error: ${err}`);
         socket.close();
     });
@@ -49,11 +50,11 @@ router.get("/", function (req, res, next) {
     setTimeout(() => {
         res.json({
             timestamp: new Date(),
-            responses: responses.map(r => r.message),
+            responses: responses.map(r => r.message.toString()),
         });
 
         socket.close();
     }, 2000);
 });
 
-module.exports = router;
+export default router;
