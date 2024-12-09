@@ -12,7 +12,7 @@ router.get("/", (_req: Request, res: Response, _next: NextFunction) => {
     const socket = dgram.createSocket("udp4");
     const broadcastAddress = "192.168.1.255";
     const port = 3000; // SDCP port
-    const responses: { message: Buffer; address: string; port: number }[] = [];
+    const responses: { message: string; address: string; port: number }[] = [];
 
     socket.bind(udpStartPort, () => {
         socket.setBroadcast(true);
@@ -27,15 +27,14 @@ router.get("/", (_req: Request, res: Response, _next: NextFunction) => {
 
     socket.on("message", (msg: Buffer, rinfo: dgram.RemoteInfo) => {
         const response = {
-            message: msg,
+            message: JSON.parse(msg.toString()),
             address: rinfo.address,
             port: rinfo.port,
         };
 
         console.log(`Received response:`, response);
 
-        if (!responses.some(r => r.address === rinfo.address && r.message.equals(msg)))
-            responses.push(response);
+        if (!responses.some(r => r.address === rinfo.address)) responses.push(response);
     });
 
     socket.on("error", (err: Error) => {
@@ -50,7 +49,7 @@ router.get("/", (_req: Request, res: Response, _next: NextFunction) => {
     setTimeout(() => {
         res.json({
             timestamp: new Date(),
-            responses: responses.map(r => r.message.toString()),
+            responses: responses,
         });
 
         socket.close();
